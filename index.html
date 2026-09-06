@@ -37,7 +37,20 @@
       <h2 id="nearbyTitle">U blizini</h2>
       <ul id="nearby" class="nearby"></ul>
       <p class="footnote" id="footnote"></p>
+      <p class="footnote" id="attrib"></p>
     </section>
+
+    <div id="gate" class="modal" hidden>
+      <div class="modal-card gate">
+        <h2 id="gateTitle">Prije nego uključite upozorenja</h2>
+        <p class="fine" id="gateLead"></p>
+        <blockquote id="gateQuote"></blockquote>
+        <p class="fine strong" id="gateRisk"></p>
+        <p class="fine" id="gateUnclear"></p>
+        <button class="accept wide" id="gateAccept" type="button"></button>
+        <button class="ghost wide" id="gateDecline" type="button"></button>
+      </div>
+    </div>
 
     <div id="settings" class="modal" hidden>
       <div class="modal-card">
@@ -47,12 +60,12 @@
           <div class="seg" id="radiusSeg"></div>
         </div>
         <div class="setrow">
-          <span id="lblSound">Zvuk</span>
-          <button class="toggle" id="soundToggle" type="button"></button>
+          <span id="lblAlerts">Upozorenja</span>
+          <button class="toggle" id="alertsToggle" type="button"></button>
         </div>
         <div class="setrow">
-          <span id="lblPlanned">Uključi planirane</span>
-          <button class="toggle" id="plannedToggle" type="button"></button>
+          <span id="lblSound">Zvuk</span>
+          <button class="toggle" id="soundToggle" type="button"></button>
         </div>
         <p class="fine" id="coverage"></p>
         <button class="ghost wide" id="closeSet" type="button">Zatvori</button>

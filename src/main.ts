@@ -43,14 +43,23 @@ function renderChrome(): void {
   $<HTMLButtonElement>('langBtn').textContent = lang() === 'me' ? 'EN' : 'CG'
   $('setTitle').textContent = t('settings', lang())
   $('lblRadius').textContent = t('alertRadius', lang())
+  $('lblAlerts').textContent = t('enableAlerts', lang())
   $('lblSound').textContent = t('sound', lang())
-  $('lblPlanned').textContent = t('showPlanned', lang())
+  $('gateTitle').textContent = t('gateTitle', lang())
+  $('gateLead').textContent = t('gateLead', lang())
+  $('gateQuote').textContent = t('gateQuote', lang())
+  $('gateRisk').textContent = t('gateRisk', lang())
+  $('gateUnclear').textContent = t('gateUnclear', lang())
+  $('gateAccept').textContent = t('gateAccept', lang())
+  $('gateDecline').textContent = t('gateDecline', lang())
   $('closeSet').textContent = t('close', lang())
   $('coverage').textContent = t('coverageWarning', lang())
-  const built = data.locations.filter((l) => l.status === 'ZAVRSENO').length
+  const processed = data.locations.filter((l) => l.status === 'ZAVRSENO').length
   $('footnote').textContent =
     `${t('dataVintage', lang())} 01.09.2026 · ${data.locations.length} ${t('locations', lang())} · ` +
-    `${data.sections.length} ${t('sections', lang())} · ${built} ${t('built', lang()).toLowerCase()}`
+    `${data.sections.length} ${t('sections', lang())} · ${processed} ${t('processedNote', lang())}`
+  $('attrib').textContent =
+    `© OpenStreetMap contributors · ${data.source.split('·')[0]!.trim()} V8, 01.09.2026 · ${t('unofficial', lang())}`
   renderSettings()
 }
 
@@ -65,12 +74,12 @@ function renderSettings(): void {
     b.onclick = () => { settings = { ...settings, radiusM: r }; persist() }
     seg.appendChild(b)
   }
+  const alerts = $<HTMLButtonElement>('alertsToggle')
+  alerts.textContent = settings.alertsEnabled ? t('on', lang()) : t('off', lang())
+  alerts.className = `toggle ${settings.alertsEnabled ? 'on' : ''}`
   const sound = $<HTMLButtonElement>('soundToggle')
   sound.textContent = settings.soundOn ? t('on', lang()) : t('off', lang())
   sound.className = `toggle ${settings.soundOn ? 'on' : ''}`
-  const planned = $<HTMLButtonElement>('plannedToggle')
-  planned.textContent = settings.includePlanned ? t('on', lang()) : t('off', lang())
-  planned.className = `toggle ${settings.includePlanned ? 'on' : ''}`
 }
 
 function persist(): void {
@@ -175,6 +184,11 @@ function handleFix(fix: Fix): void {
     setStatus(`±${Math.round(fix.accuracyM)} m`)
     return
   }
+  if (!settings.alertsEnabled) {
+    // Following the driver on the map is not warning them. Say which one this is.
+    setStatus(`${t('mapOnly', lang())} · ±${Math.round(fix.accuracyM)} m`)
+    return
+  }
   const { active, fired } = engine.update(fix)
   for (const id of fired) {
     const wasInside = active.find((a) => a.targetId === id)?.phase === 'INSIDE'
@@ -238,12 +252,42 @@ function disarm(): void {
   renderChrome()
 }
 
-$('armBtn').onclick = () => (armed ? disarm() : arm())
+function requestDrive(): void {
+  if (armed) { disarm(); return }
+  if (!settings.alertsEnabled && !sessionStorage.getItem('gate-seen')) {
+    $('gate').hidden = false
+    return
+  }
+  arm()
+}
+
+$('armBtn').onclick = requestDrive
+$('gateAccept').onclick = () => {
+  sessionStorage.setItem('gate-seen', '1')
+  settings = { ...settings, alertsEnabled: true }
+  saveSettings(settings)
+  $('gate').hidden = true
+  persist()
+  arm()
+}
+$('gateDecline').onclick = () => {
+  sessionStorage.setItem('gate-seen', '1')
+  $('gate').hidden = true
+  arm()
+}
+$('alertsToggle').onclick = () => {
+  if (settings.alertsEnabled) {
+    settings = { ...settings, alertsEnabled: false }
+    persist()
+  } else {
+    $('settings').hidden = true
+    $('gate').hidden = false
+  }
+}
 $('langBtn').onclick = () => { settings = { ...settings, language: lang() === 'me' ? 'en' : 'me' }; persist() }
 $('setBtn').onclick = () => { $('settings').hidden = false }
 $('closeSet').onclick = () => { $('settings').hidden = true }
 $('soundToggle').onclick = () => { settings = { ...settings, soundOn: !settings.soundOn }; persist() }
-$('plannedToggle').onclick = () => { settings = { ...settings, includePlanned: !settings.includePlanned }; persist() }
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && armed && !wakeLock) void acquireWakeLock()
@@ -279,6 +323,10 @@ if (new URLSearchParams(location.search).has('sim')) {
     let i = 0
     if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null }
     map.focus(start, 14)
+    // The simulator exists to show the alert path, so it opts in explicitly
+    // rather than silently inheriting the consent gate's default.
+    settings = { ...settings, alertsEnabled: true }
+    sessionStorage.setItem('gate-seen', '1')
     arm()
     setInterval(() => {
       const f = Math.min(1, i / steps)

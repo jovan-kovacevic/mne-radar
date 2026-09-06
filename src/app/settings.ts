@@ -8,6 +8,8 @@ export function loadSettings(): Settings {
     if (!raw) return { ...DEFAULT_SETTINGS }
     const parsed = JSON.parse(raw) as Partial<Settings>
     return {
+      // Never inherit an "on" from a malformed value: this one must be a deliberate act.
+      alertsEnabled: parsed.alertsEnabled === true,
       radiusM: [300, 500, 1000].includes(Number(parsed.radiusM))
         ? Number(parsed.radiusM)
         : DEFAULT_SETTINGS.radiusM,

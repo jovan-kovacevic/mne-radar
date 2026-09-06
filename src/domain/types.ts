@@ -78,6 +78,13 @@ export interface EngineOutput {
 }
 
 export interface Settings {
+  /**
+   * Alerts are OFF until the driver turns them on, having read what Article 23
+   * of the Zakon o bezbjednosti saobracaja na putevima says. Whether a static
+   * map of published locations is a "sredstvo" under that article is unresolved
+   * (wayfinder ticket 03), and the penalty falls on the driver.
+   */
+  alertsEnabled: boolean
   radiusM: number
   includePlanned: boolean
   soundOn: boolean
@@ -85,6 +92,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  alertsEnabled: false,
   radiusM: 500,
   includePlanned: true,
   soundOn: true,

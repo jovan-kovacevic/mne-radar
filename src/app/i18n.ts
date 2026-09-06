@@ -21,8 +21,12 @@ export const UI: Dict = {
   inSection: { me: 'MJERENJE U TOKU', en: 'BEING MEASURED' },
   toEnd: { me: 'do kraja', en: 'to the end' },
   sectionLength: { me: 'dužina', en: 'length' },
-  built: { me: 'Postavljeno', en: 'Built' },
-  planned: { me: 'Planirano', en: 'Planned' },
+  // The source document's own field, which records DESIGN progress, not whether a
+  // camera exists: location 009 is ZAVRSENO and its legend reads "Nema kamera".
+  built: { me: 'Obrađeno', en: 'Processed' },
+  planned: { me: 'Nije obrađeno', en: 'Not processed' },
+  processedNote: { me: 'obrađeno u dokumentu', en: 'processed in the document' },
+  unofficial: { me: 'Nezvanično', en: 'Unofficial' },
   settings: { me: 'Podešavanja', en: 'Settings' },
   alertRadius: { me: 'Upozori na', en: 'Warn at' },
   sound: { me: 'Zvuk', en: 'Sound' },
@@ -41,6 +45,29 @@ export const UI: Dict = {
   enforces: { me: 'Kontroliše', en: 'Enforces' },
   km: { me: 'km', en: 'km' },
   m: { me: 'm', en: 'm' },
+
+  gateTitle: { me: 'Prije nego uključite upozorenja', en: 'Before you turn warnings on' },
+  gateLead: {
+    me: 'Član 23 Zakona o bezbjednosti saobraćaja na putevima propisuje:',
+    en: 'Article 23 of the Road Traffic Safety Act provides:',
+  },
+  gateQuote: {
+    me: '„U vozilu se u saobraćaju na putu ne smije koristiti niti nalaziti uređaj, odnosno sredstvo kojim se može otkrivati ili ometati rad uređaja za mjerenje brzine kretanja vozila, odnosno drugih uređaja namijenjenih za otkrivanje i dokumentovanje prekršaja.”',
+    en: '“In a vehicle in traffic on a road, it is prohibited to use or to have a device, or means, capable of detecting or interfering with the operation of devices for measuring vehicle speed, or of other devices intended to detect and document offences.”',
+  },
+  gateRisk: {
+    me: 'Zabranjeno je i samo držanje takvog sredstva u vozilu, ne samo korišćenje. Kazne uključuju novčanu kaznu, moguću kaznu zatvora, kaznene bodove i zabranu upravljanja vozilom. Zakon nalaže policiji da vozača liši slobode.',
+    en: 'Merely having such a means in the vehicle is prohibited, not only using it. Penalties include a fine, possible imprisonment, penalty points and a driving ban. The law directs police to detain the driver.',
+  },
+  gateUnclear: {
+    me: 'Nije riješeno da li se ovaj član odnosi na mapu zvanično objavljenih lokacija. Član govori o otkrivanju RADA uređaja, a ova aplikacija ne detektuje ništa — ali to nije potvrdio nijedan sud ni nadležni organ. Ovo nije pravni savjet.',
+    en: 'Whether this article reaches a map of officially published locations is unresolved. It speaks of detecting the OPERATION of equipment, and this app detects nothing — but no court or authority has confirmed that. This is not legal advice.',
+  },
+  gateAccept: { me: 'Razumijem — uključi upozorenja', en: 'I understand — turn warnings on' },
+  gateDecline: { me: 'Vozi bez upozorenja', en: 'Drive without warnings' },
+  alertsOff: { me: 'Upozorenja isključena', en: 'Warnings off' },
+  mapOnly: { me: 'Samo mapa', en: 'Map only' },
+  enableAlerts: { me: 'Upozorenja', en: 'Warnings' },
 }
 
 export const TYPE_LABELS: Dict = {

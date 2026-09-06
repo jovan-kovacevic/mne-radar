@@ -31,17 +31,25 @@ The everyday word a driver uses for what the app shows them. It maps to
 Location, never to Camera. Used in user-facing copy and the project name;
 avoided in code and on the map, where Location is the precise term.
 
-## Built / Planned
+## Processed / Not processed
 
-The two states a Location can be in.
+The two states the source document records for a Location, in its `Status`
+field: `ZAVRSENO` and `Nije obradena`.
 
-- **Built** — `ZAVRŠENO` in the source document. The enforcement point exists.
-- **Planned** — `Nije obrađeno` in the source document. Specified, not yet
-  installed.
+This is the state of the **vendor's design work** on that Location, not whether
+a camera exists. The decisive evidence needs no interpretation: Location 009 is
+`ZAVRSENO` and its element legend reads `Nema kamera` — zero cameras (p.17).
+Whatever the field means, it cannot mean "cameras are installed here". It is
+also consistent with section 016 being `ZAVRSENO` while its own pair 017 is
+`Nije obradena`, which is incoherent as construction status.
 
-Both are shown on the map. Only Built Locations warn a driver by default,
-because warning about a camera that does not exist teaches the driver to
-distrust the app.
+Consequences, which the app follows:
+
+- It **never gates a warning**. All 88 Locations alert as one class.
+- It is **never shown to the driver as "built" or "active"** — the app says
+  processed / not processed, which is what the document actually records.
+- Nothing in the app tells a driver whether a camera is live, because the
+  source does not know.
 
 ## Enforcement Function
 
