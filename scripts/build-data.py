@@ -47,7 +47,17 @@ def num(v):
 
 def collect(journal):
     pages = {}
-    for line in journal.read_text().splitlines():
+    # A finished workflow's task output already carries merged, adjudicated
+    # records; prefer it over replaying the per-agent journal.
+    text = journal.read_text()
+    if journal.suffix == ".output" or text.lstrip().startswith("{\n  \"summary\""):
+        blob = json.loads(text)
+        res = blob.get("result", blob)
+        for p in (res.get("records") or []):
+            pages[int(p["page"])] = p
+        if pages:
+            return pages
+    for line in text.splitlines():
         if not line.strip():
             continue
         try:
@@ -104,9 +114,12 @@ def main():
             rejected.append({"page": page, "id": lid, "why": f"unmapped status {p.get('status')!r}"})
             continue
         seen.add(lid)
+        # Readers render the Montenegrin low quote inconsistently; ,, and " are
+        # the same printed glyph. This is the only normalisation applied to text.
+        name = (p.get("name") or "").strip().replace(',,', '\u201e')
         locations.append({
             "id": lid,
-            "name": (p.get("name") or "").strip(),
+            "name": name,
             "city": (p.get("city") or "").strip(),
             "lat": lat, "lon": lon,
             "type": typ, "status": status,

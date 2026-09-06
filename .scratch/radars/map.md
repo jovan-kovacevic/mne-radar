@@ -47,6 +47,19 @@ the map):
 
 <!-- one line per closed ticket -->
 
+- [01 Structured source behind the PDF](issues/01-structured-source-behind-the-pdf.md) — none exists or is obtainable; extraction is unconditional, and attribution names the document, not a contractor.
+- [02 What ZAVRSENO actually means](issues/02-what-zavrseno-actually-means.md) — design progress, not construction (loc 009 is ZAVRSENO with "Nema kamera"); it never gates alerting.
+- [03 Article 23 and whether alerts ship](issues/03-article-23-and-whether-alerts-ship.md) — UNRESOLVED, needs a Montenegrin advokat; shipping alerts off by default behind the verbatim article. The publisher is exposed too, under stav 2.
+- [04 Rights and licence of the dataset](issues/04-rights-and-licence-of-the-dataset.md) — MIT code with a carve-out, CC0 + NOTICE for the data, permanent on-screen attribution; never redistribute the PDF.
+
+## Blocking a public launch
+
+- A written opinion from a Montenegrin advokat on whether Article 23 st. 1 reaches
+  a static-database app, and whether st. 2 exposes the publisher. Nothing else on
+  this map can substitute for it.
+- The verbatim text of Sl. list CG 111/2026, to close the last currency gap on the
+  penalty figures before any of them appear in user-facing copy.
+
 ## Not yet specified
 
 - How this programme's 88 locations relate to enforcement that already exists

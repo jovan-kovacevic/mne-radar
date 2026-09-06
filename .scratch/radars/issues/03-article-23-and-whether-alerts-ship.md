@@ -1,7 +1,7 @@
 # 03 — Does Montenegrin law restrict warning drivers about enforcement locations, and if it might, which of three products ships?
 
 Type: research
-Status: claimed
+Status: resolved
 Blocked by: nothing
 
 ## Question
@@ -26,3 +26,9 @@ precede launch copy, screenshots, and anything cached offline.
 
 Resolve with: the legal position, the confidence in it, and a recommended
 product shape.
+
+## Answer
+
+UNRESOLVED and needs a Montenegrin advokat. Article 23 ZoBS bans using or merely having a "sredstvo" capable of detecting the OPERATION of speed-measuring equipment; penalties include penalty points and a mandatory driving ban, and Art. 296 directs police to detain the driver. Art. 23 st. 2 also exposes the PUBLISHER for advertising such means. Textually the app likely falls outside (it detects nothing, and France and Germany each needed a separate provision to reach location apps), but no court or authority has said so. Shipping shape (b): alerts off until the driver opts in behind the verbatim article.
+
+Full findings: `.scratch/radars/research/03-article-23-and-whether-alerts-ship.md`

@@ -1,7 +1,7 @@
 # 01 — Does the data behind Radars.pdf exist in structured form from a public or government source, and can we get it?
 
 Type: research
-Status: claimed
+Status: resolved
 Blocked by: nothing
 
 ## Question
@@ -20,3 +20,9 @@ re-extraction becomes a re-import.
 
 Resolve with: what exists, where, in what format, and a recommendation on
 whether extraction should wait for it or run in parallel.
+
+## Answer
+
+No structured public source exists and none is obtainable on this timeline — the PDF has zero recoverable structure (no text layer, no embedded files, no EXIF), data.gov.me has nothing, and no CeJN tender exists yet. Extraction runs unconditionally. Attribute to the document, not to SAT-TRAKT as contractor: that link is unverified.
+
+Full findings: `.scratch/radars/research/01-structured-source-behind-the-pdf.md`

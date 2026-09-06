@@ -1,7 +1,7 @@
 # 04 — Given an official government source, what licence does the extracted dataset ship under, and what does the repo claim to own?
 
 Type: research
-Status: claimed
+Status: resolved
 Blocked by: nothing
 
 ## Question
@@ -25,3 +25,9 @@ camera-model and pole strings the record schema deliberately drops) stay out.
 
 Resolve with: the licence for the code, the licence and NOTICE for the data,
 and the on-screen attribution the app must carry.
+
+## Answer
+
+No Montenegrin law forces a licence. Minimum-assertion: MIT for code with an explicit carve-out, CC0 1.0 plus a provenance NOTICE for src/data/radars.json, and permanent on-screen attribution "© OpenStreetMap contributors · SAT-TRAKT V8, 01.09.2026 · Nezvanično". The Airbus/CNES/Maxar credit does not reach the coordinates, but Radars.pdf and page renders must never be redistributed.
+
+Full findings: `.scratch/radars/research/04-rights-and-licence-of-the-dataset.md`

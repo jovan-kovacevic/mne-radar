@@ -1,7 +1,7 @@
 # 02 — Does ZAVRSENO / Nije obradena describe the physical enforcement point, or the state of the vendor's design work on that page?
 
 Type: research
-Status: claimed
+Status: resolved
 Blocked by: nothing
 
 ## Question
@@ -26,3 +26,9 @@ claim.
 
 Resolve with: the reading the evidence supports, how confident, and whether
 `ZAVRSENO` may gate alerting at all.
+
+## Answer
+
+ZAVRSENO records the vendor's DESIGN progress, not whether a camera exists — location 009 is ZAVRSENO with "Nema kamera". It must never gate alerting and must never be shown to a driver as "built".
+
+Full findings: `.scratch/radars/research/02-what-zavrseno-actually-means.md`
