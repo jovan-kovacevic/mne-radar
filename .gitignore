@@ -1,0 +1,7 @@
+# Source technical document — 28.8 MB, third-party, kept out of git
+Radars.pdf
+
+node_modules/
+dist/
+.DS_Store
+*.local
