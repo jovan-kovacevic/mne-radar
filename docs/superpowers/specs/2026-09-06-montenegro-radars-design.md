@@ -1,7 +1,29 @@
 # Montenegro Radars — Design
 
 Date: 2026-09-06
-Status: approved (design), pending implementation plan
+Status: **superseded in part** — see the banner below
+
+> **PARTLY INVALIDATED — 2026-09-06, after reading the full source document.**
+>
+> This spec was written having read 18 of 99 pages. Reading the rest broke it:
+>
+> - **§4.4's `type` union is wrong.** The document has four values, not two:
+>   INTERSECTION ENFORCEMENT (5), ROAD ENFORCEMENT POINT (31),
+>   AVERAGE SPEED CONTROL · POINT A (26), AVERAGE SPEED CONTROL · POINT B (26).
+> - **52 of 88 records (59%) are average-speed section endpoints**, which this
+>   spec does not model at all. §4.5 halts the build on an unmappable label, so
+>   extraction cannot run as written.
+> - **§5.2's alert machine is the wrong shape for them.** Corridors run 690 m to
+>   2221 m. A point alert at POINT A tells the driver to brake and then
+>   accelerate into the measured zone.
+> - **§2's status string is wrong**: `Nije obrađena`, not `Nije obrađeno`. And
+>   what `ZAVRŠENO` means — camera built, or drawing finished — is unresolved.
+>
+> Verified directly: p.24 loc 016 POINT A `ZAVRŠENO`; p.26 loc 017 POINT B
+> `Nije obrađena`; 1.72 km apart.
+>
+> The live plan is the wayfinder map at `.scratch/radars/map.md`. Treat the
+> sections below as a starting position, not decided.
 
 ## 1. Purpose
 
