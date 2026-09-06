@@ -1,7 +1,7 @@
 # 01 — Does the data behind Radars.pdf exist in structured form from a public or government source, and can we get it?
 
 Type: research
-Status: open
+Status: claimed
 Blocked by: nothing
 
 ## Question

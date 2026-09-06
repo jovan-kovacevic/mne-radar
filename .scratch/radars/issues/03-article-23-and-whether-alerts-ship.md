@@ -1,7 +1,7 @@
 # 03 — Does Montenegrin law restrict warning drivers about enforcement locations, and if it might, which of three products ships?
 
 Type: research
-Status: open
+Status: claimed
 Blocked by: nothing
 
 ## Question

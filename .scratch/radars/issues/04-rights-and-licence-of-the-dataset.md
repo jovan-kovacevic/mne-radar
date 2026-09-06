@@ -1,7 +1,7 @@
 # 04 — Given an official government source, what licence does the extracted dataset ship under, and what does the repo claim to own?
 
 Type: research
-Status: open
+Status: claimed
 Blocked by: nothing
 
 ## Question

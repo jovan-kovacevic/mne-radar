@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="sr-Latn-ME">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+    <meta name="theme-color" content="#0F1417" />
+    <title>Radari Crna Gora</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="map" aria-label="Map of enforcement locations"></div>
+
+    <div id="banner" class="banner" hidden aria-live="assertive"></div>
+
+    <header id="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"></span>
+        <span class="name" id="appName">Radari Crna Gora</span>
+      </div>
+      <div class="topright">
+        <button id="langBtn" class="ghost" type="button">EN</button>
+        <button id="setBtn" class="ghost" type="button" aria-label="Settings">···</button>
+      </div>
+    </header>
+
+    <section id="sheet">
+      <div class="grabber" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <button id="armBtn" type="button">Počni vožnju</button>
+        <div class="status" id="status">Mirovanje</div>
+      </div>
+      <h2 id="nearbyTitle">U blizini</h2>
+      <ul id="nearby" class="nearby"></ul>
+      <p class="footnote" id="footnote"></p>
+    </section>
+
+    <div id="settings" class="modal" hidden>
+      <div class="modal-card">
+        <h2 id="setTitle">Podešavanja</h2>
+        <div class="setrow">
+          <span id="lblRadius">Upozori na</span>
+          <div class="seg" id="radiusSeg"></div>
+        </div>
+        <div class="setrow">
+          <span id="lblSound">Zvuk</span>
+          <button class="toggle" id="soundToggle" type="button"></button>
+        </div>
+        <div class="setrow">
+          <span id="lblPlanned">Uključi planirane</span>
+          <button class="toggle" id="plannedToggle" type="button"></button>
+        </div>
+        <p class="fine" id="coverage"></p>
+        <button class="ghost wide" id="closeSet" type="button">Zatvori</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

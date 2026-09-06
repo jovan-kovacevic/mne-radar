@@ -1,7 +1,7 @@
 # 02 — Does ZAVRSENO / Nije obradena describe the physical enforcement point, or the state of the vendor's design work on that page?
 
 Type: research
-Status: open
+Status: claimed
 Blocked by: nothing
 
 ## Question
