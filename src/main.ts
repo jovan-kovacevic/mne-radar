@@ -325,9 +325,14 @@ nearbyList.addEventListener(
       nearby.backToTop()
       return
     }
-    if (atBottom(nearbyList) && nearby.revealMore(targets.length)) {
-      renderNearby(lastFix ?? FALLBACK_ORIGIN, lastFix !== null)
-    }
+    if (!atBottom(nearbyList)) return
+    // Render when the freeze arms, not only when rows were revealed. On a fully
+    // revealed list there is nothing left to reveal, and without this render the
+    // order would be captured by the next fix instead — at a position the reader
+    // has not seen, letting exactly one shuffle through under their finger.
+    const wasLive = nearby.ordering === 'live'
+    const revealed = nearby.revealMore(targets.length)
+    if (revealed || wasLive) renderNearby(lastFix ?? FALLBACK_ORIGIN, lastFix !== null)
   },
   { passive: true },
 )

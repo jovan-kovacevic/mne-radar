@@ -145,12 +145,24 @@ describe('nearby list paging', () => {
     expect(ids(list.rows({ lat: ORIGIN.lat + 0.36, lon: ORIGIN.lon }, targets, true))).toEqual(realOrder)
   })
 
-  it('keeps a frozen order across later fallback renders while the GPS is silent', () => {
+  it('still owes the driver a re-rank after several renders on the fallback origin', () => {
     const targets = ladder(61)
     const list = createNearbyList()
     list.revealMore(targets.length)
     const first = ids(list.rows(ORIGIN, targets, false))
+    // Rendering again while the GPS is still silent must not launder the
+    // Podgorica ranking into one that looks like the driver's.
     expect(ids(list.rows(ORIGIN, targets, false))).toEqual(first)
+
+    // A settings change during the wait rebuilds the targets. The freeze still
+    // holds, so a newcomer nearer than everything sorts after the rows the
+    // reader is looking at rather than shoving them down.
+    const withNewcomer = [point('999', ORIGIN.lat + 0.0005), ...targets]
+    expect(ids(list.rows(ORIGIN, withNewcomer, false))[0]).toBe('000')
+
+    const real = ids(list.rows({ lat: ORIGIN.lat + 0.18, lon: ORIGIN.lon }, targets, true))
+    expect(real[0]).toBe('019')
+    expect(real).not.toEqual(first)
   })
 
   it('measures a section from its nearer end and shows it as one row', () => {
