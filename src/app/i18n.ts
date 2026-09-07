@@ -68,6 +68,24 @@ export const UI: Dict = {
   alertsOff: { me: 'Upozorenja isključena', en: 'Warnings off' },
   mapOnly: { me: 'Samo mapa', en: 'Map only' },
   enableAlerts: { me: 'Upozorenja', en: 'Warnings' },
+
+  locFixHelpDenied: {
+    me: 'Otvorite ikonu pored adrese u pregledaču → Lokacija → Dozvoli, pa osvježite stranicu.',
+    en: 'Open the icon beside the address bar → Location → Allow, then reload the page.',
+  },
+  locFixHelpUnavailable: {
+    me: 'Pregledač ima dozvolu, ali sistem ne daje lokaciju. Na macOS-u: Sistemska podešavanja → Privatnost i bezbjednost → Lokacijske usluge.',
+    en: 'The browser has permission but the system is not providing a position. On macOS: System Settings → Privacy & Security → Location Services.',
+  },
+  locFixHelpInsecure: {
+    me: 'Lokacija radi samo preko HTTPS ili preko localhost. Otvorite http://localhost:5177 umjesto IP adrese.',
+    en: 'Location only works over HTTPS or on localhost. Open http://localhost:5177 instead of an IP address.',
+  },
+  locFixHelpTimeout: {
+    me: 'Nema signala. Unutra zna potrajati — izađite napolje ili sačekajte.',
+    en: 'No fix yet. Indoors this can take a while — go outside or wait.',
+  },
+  locRetry: { me: 'Pokušaj ponovo', en: 'Try again' },
 }
 
 export const TYPE_LABELS: Dict = {
