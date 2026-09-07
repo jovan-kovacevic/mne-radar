@@ -74,12 +74,25 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .ghost.wide { width: 100%; padding: .7rem; margin-top: .8rem; }
 
 /* --- alert banner ------------------------------------------------------- */
+/* Anchored to the top of the sheet, never to the top of the screen. iOS Safari
+   lays the page out under its own bars (viewport-fit=cover) and reports
+   env(safe-area-inset-top) as 0 in a portrait tab, so a top-pinned banner had
+   nothing to push it clear and lost its first ~100 px — issue 20. Down here no
+   browser bar reaches, the box grows upward into the map, and the number sits in
+   the same place however long the lines above it run. */
+/* Reversed, so the lines are painted bottom-up from the number while the DOM
+   keeps them in the order a screen reader should read them — see src/app/banner.ts. */
 .banner {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 900;
-  padding: calc(.7rem + env(safe-area-inset-top)) .9rem .8rem;
+  position: fixed; left: 0; right: 0; bottom: var(--sheet-h); z-index: 900;
+  display: flex; flex-direction: column-reverse;
+  padding: .7rem max(.9rem, env(safe-area-inset-right)) .8rem max(.9rem, env(safe-area-inset-left));
   background: var(--alarm); color: #fff;
-  box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  box-shadow: 0 -10px 30px rgba(0,0,0,.5);
 }
+/* An author `display` beats the UA's `[hidden] { display: none }`, so the
+   element that hides itself with the attribute has to be told again here.
+   Without this a finished drive leaves its last warning on the map. */
+.banner[hidden] { display: none; }
 .banner.section { background: var(--amber); color: #14181a; }
 .banner.inside { background: #b8402f; color: #fff; }
 .banner .kind {
@@ -88,10 +101,16 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 }
 .banner .dist {
   font-family: var(--mono); font-weight: 500; font-size: 2.6rem;
-  line-height: 1.05; font-variant-numeric: tabular-nums; margin-top: .1rem;
+  line-height: 1.05; font-variant-numeric: tabular-nums; margin-top: .25rem;
 }
 .banner .where { font-size: .95rem; opacity: .92; margin-top: .15rem; }
-.leaflet-bottom.leaflet-right { margin-bottom: .2rem; }
+
+/* The banner now sits on the bottom of the map, which is where leaflet keeps the
+   zoom buttons, the centre control BUG-001 exists for, and the OSM attribution.
+   They ride up by exactly the banner's height and drop back when it goes;
+   renderBanner publishes --banner-h and zeroes it whenever nothing is showing. */
+.leaflet-bottom { margin-bottom: var(--banner-h, 0px); }
+.leaflet-bottom.leaflet-right { margin-bottom: calc(var(--banner-h, 0px) + .2rem); }
 .banner .what {
   font-family: var(--display); text-transform: uppercase; letter-spacing: .06em;
   font-size: .82rem; opacity: .85; margin-top: .3rem;

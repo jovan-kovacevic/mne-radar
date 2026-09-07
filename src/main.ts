@@ -9,7 +9,8 @@ import { createChime } from './app/sound'
 import { loadSettings, saveSettings } from './app/settings'
 import { formatDistance, shortName } from './app/format'
 import { atBottom, atTop, createNearbyList, type NearbyRow } from './app/nearby'
-import { functionLabel, t, typeLabel, type Lang } from './app/i18n'
+import { t, typeLabel, type Lang } from './app/i18n'
+import { bannerLines } from './app/banner'
 
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id)
@@ -93,26 +94,30 @@ function persist(): void {
   renderNearby(lastFix ?? FALLBACK_ORIGIN, lastFix !== null)
 }
 
+/**
+ * How much of the map's bottom edge the banner is covering. Leaflet's corner
+ * controls read it and step over the banner instead of hiding under it.
+ */
+function publishBannerHeight(px: number): void {
+  document.documentElement.style.setProperty('--banner-h', `${px}px`)
+}
+
 function renderBanner(active: ActiveAlert[]): void {
   const banner = $('banner')
   const top = active[0]
   if (!top) {
     banner.hidden = true
+    publishBannerHeight(0)
     map.highlight(null)
     return
   }
   const isSection = top.kind === 'section'
-  const inside = top.phase === 'INSIDE'
-  banner.className = `banner ${isSection ? 'section' : ''} ${inside ? 'inside' : ''}`.trim()
-  const kind = inside ? t('inSection', lang()) : isSection ? t('sectionAhead', lang()) : t('radarAhead', lang())
-  const tail = inside ? ` ${t('toEnd', lang())}` : ''
-  const fns = top.location.functions.slice(0, 3).map((f) => functionLabel(f, lang())).join(' · ')
-  banner.innerHTML =
-    `<div class="kind">${kind}</div>` +
-    `<div class="dist">${formatDistance(top.distanceM, lang())}${tail}</div>` +
-    `<div class="where">${shortName(top.location.name)}</div>` +
-    (fns ? `<div class="what">${fns}</div>` : '')
+  banner.className = `banner ${isSection ? 'section' : ''} ${top.phase === 'INSIDE' ? 'inside' : ''}`.trim()
+  banner.innerHTML = bannerLines(top, lang())
+    .map((l) => `<div class="${l.role}">${l.text}</div>`)
+    .join('')
   banner.hidden = false
+  publishBannerHeight(banner.offsetHeight)
   map.highlight(isSection ? top.targetId : null)
 }
 
@@ -291,6 +296,7 @@ function disarm(): void {
   map.followMe(false)
   map.highlight(null)
   $('banner').hidden = true
+  publishBannerHeight(0)
   void wakeLock?.release()
   wakeLock = null
   $('armBtn').classList.remove('armed')
@@ -415,4 +421,40 @@ if (new URLSearchParams(location.search).has('sim')) {
       i = i >= steps ? 0 : i + 1
     }, 350)
   }
+}
+
+// --- geometry probe (dev only, ?probe=1) -----------------------------------
+// Nobody who works on this has an iPhone, so the phone has to report back. This
+// puts a four-line banner on screen with its own measured geometry printed in
+// it: one screenshot says whether all four lines survive on that device and
+// where the box actually landed. Do not combine with ?sim=1 or an armed drive —
+// both write the same element.
+if (new URLSearchParams(location.search).has('probe')) {
+  const probe = $('banner')
+  // env() is only readable through layout: a strip that tall, measured.
+  const gauge = document.createElement('div')
+  gauge.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top)'
+  document.body.appendChild(gauge)
+  const draw = (): void => {
+    const v = window.visualViewport
+    const doc = document.documentElement
+    const r = probe.getBoundingClientRect()
+    const bar = $('topbar').getBoundingClientRect()
+    probe.className = 'banner'
+    // Same line order as a real alert: number first in the DOM, painted last.
+    probe.innerHTML =
+      `<div class="dist">${Math.round(r.top)}</div>` +
+      `<div class="what">visual ${v ? `${Math.round(v.width)}×${Math.round(v.height)} off ${Math.round(v.offsetTop)} @${v.scale.toFixed(2)}` : 'no api'}` +
+      ` · page ${doc.clientWidth}×${doc.clientHeight} · win ${window.innerHeight}/${window.outerHeight} · scr ${screen.height}</div>` +
+      `<div class="where">banner ${Math.round(r.top)}→${Math.round(r.bottom)} · topbar ${Math.round(bar.top)}→${Math.round(bar.bottom)}` +
+      ` · safe-top ${gauge.offsetHeight}</div>` +
+      '<div class="kind">line 1 of 4 — all four visible?</div>'
+    probe.hidden = false
+    publishBannerHeight(probe.offsetHeight)
+  }
+  // Twice: the second pass reports the box the first pass produced.
+  draw()
+  requestAnimationFrame(draw)
+  window.visualViewport?.addEventListener('resize', draw)
+  window.visualViewport?.addEventListener('scroll', draw)
 }
