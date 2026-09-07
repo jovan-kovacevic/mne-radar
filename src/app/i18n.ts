@@ -28,7 +28,8 @@ export const UI: Dict = {
   processedNote: { me: 'obrađeno u dokumentu', en: 'processed in the document' },
   unofficial: { me: 'Nezvanično', en: 'Unofficial' },
   settings: { me: 'Podešavanja', en: 'Settings' },
-  alertRadius: { me: 'Upozori na', en: 'Warn at' },
+  // A ceiling now, not a fixed distance: the warning is 20 s of driving, capped here.
+  alertRadius: { me: 'Upozori najviše na', en: 'Warn at most' },
   sound: { me: 'Zvuk', en: 'Sound' },
   showPlanned: { me: 'Uključi planirane', en: 'Include planned' },
   on: { me: 'Uklj.', en: 'On' },
