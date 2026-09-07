@@ -147,7 +147,7 @@ function renderNearby(fix: LatLon, fromRealFix = true): void {
   $('nearbyTitle').innerHTML = fromRealFix
     ? t('nearby', lang())
     : `${t('nearby', lang())} <span class="refpoint">· Podgorica</span>`
-  const rows = nearby.rows(fix, targets)
+  const rows = nearby.rows(fix, targets, fromRealFix)
 
   if (!rows.length) {
     const li = document.createElement('li')

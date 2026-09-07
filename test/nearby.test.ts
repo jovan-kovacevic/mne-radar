@@ -109,6 +109,50 @@ describe('nearby list paging', () => {
     expect(rows).toHaveLength(PAGE * 2)
   })
 
+  it('freezes again at the bottom of a list that is already fully revealed', () => {
+    const targets = ladder(61)
+    const list = createNearbyList()
+    while (list.revealMore(targets.length)) { /* the user keeps scrolling */ }
+    list.rows(ORIGIN, targets)
+    list.backToTop()
+    expect(list.ordering).toBe('live')
+
+    // Scrolling back down to the bottom: revealMore has nothing left to reveal,
+    // but the user is reading down there and the order must hold for them.
+    expect(list.revealMore(targets.length)).toBe(false)
+    const moved = { lat: ORIGIN.lat + 0.18, lon: ORIGIN.lon }
+    const order = ids(list.rows(moved, targets))
+    expect(list.ordering).toBe('frozen')
+    expect(ids(list.rows({ lat: ORIGIN.lat + 0.36, lon: ORIGIN.lon }, targets))).toEqual(order)
+  })
+
+  it('re-ranks a list frozen before the first fix arrived', () => {
+    const targets = ladder(61)
+    const list = createNearbyList()
+    // The GPS has not answered yet, so the list is ranked around the fallback
+    // origin and the user scrolls anyway.
+    list.revealMore(targets.length)
+    const fallbackOrder = ids(list.rows(ORIGIN, targets, false))
+    expect(fallbackOrder[0]).toBe('000')
+
+    // The first real fix lands 20 km up the ladder: the frozen Podgorica ranking
+    // is not the driver's, so it is thrown away and taken again from here.
+    const real = { lat: ORIGIN.lat + 0.18, lon: ORIGIN.lon }
+    const realOrder = ids(list.rows(real, targets, true))
+    expect(realOrder).not.toEqual(fallbackOrder)
+    expect(realOrder[0]).toBe('019')
+    // And it holds from there, rather than re-sorting on every later fix.
+    expect(ids(list.rows({ lat: ORIGIN.lat + 0.36, lon: ORIGIN.lon }, targets, true))).toEqual(realOrder)
+  })
+
+  it('keeps a frozen order across later fallback renders while the GPS is silent', () => {
+    const targets = ladder(61)
+    const list = createNearbyList()
+    list.revealMore(targets.length)
+    const first = ids(list.rows(ORIGIN, targets, false))
+    expect(ids(list.rows(ORIGIN, targets, false))).toEqual(first)
+  })
+
   it('measures a section from its nearer end and shows it as one row', () => {
     const list = createNearbyList()
     const targets = buildTargets([LOC_016, LOC_017], [
