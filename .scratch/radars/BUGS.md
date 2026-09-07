@@ -7,7 +7,7 @@ one up: reproduce it first, then fix, then say how you verified.
 
 ## BUG-001 — The map yanks itself back to my position while I am reading a radar
 
-**Status:** open
+**Status:** fixed, 2026-09-07
 **Reported:** 2026-09-07, by the user
 **Severity:** high — it makes the detail popups effectively unreadable
 
@@ -72,3 +72,47 @@ respect the same "the user is busy" rule.
 - Press the centre control: the map returns to the driver and resumes following.
 - Repeat with the app not armed, immediately after load, to cover the first-fix
   path.
+
+### Fix
+
+The decision of whether a fix may move the map is now a policy of its own,
+`createViewportPolicy()` in `src/app/viewport.ts`, and `src/app/map.ts` only
+obeys it:
+
+- The driver takes the wheel on `dragstart`, `popupopen`, `zoomstart` and an
+  arrow-key pan (Leaflet's keyboard pan goes through `panBy` and fires no
+  `dragstart`). From then on **no** fix moves the map — the first-fix centre
+  included, so a popup opened in the first seconds after load is safe too.
+- The hold is sticky. Closing the popup does not hand the map back: a pan has
+  no "done panning" event, and popups behaving differently from every other
+  gesture is the surprise this bug is made of. The ways back are the centre
+  control and arming a Drive, both presses.
+- Following no longer calls `setView(zoom >= 14)`. It calls `panTo`, so a
+  driver who zoomed out to see the whole route keeps that zoom.
+- A "centre on me" control sits bottom-right above the zoom control. It
+  recentres, hands following back, and is lit (`aria-pressed`) only while the
+  map will actually track — so the driver can see which it is.
+- `focus()` from a nearby-list row now takes the wheel as well: asking to look
+  at a location and being dragged off it a second later was the same bug.
+
+### Verified
+
+`npm run typecheck`, `npx vitest run` (60 tests, 13 of them new in
+`test/viewport.test.ts`) and `npm run build` are green. Behaviour was then
+checked in Chrome against the acceptance list, each measurement paired with a
+liveness check that fixes were still arriving (a backgrounded tab freezes the
+simulator's timers and makes a frozen map look like a pass):
+
+- **Armed, moving, popup open** — 6 s of fixes: map-pane transform constant at
+  `translate3d(72px, -1px, 0px)`, popup top constant at `5.28`, popup open.
+- **Closing the popup** — 3 s more of fixes, transform still `72px`.
+- **Pan while armed** — drag moved it to `-68px` and it stayed there across 4 s
+  of fixes.
+- **Arrow-key pan while armed** — map panned, control went unlit.
+- **Centre control** — recentred (me-dot 1 px off the map centre), lit again,
+  and the following resumed on the next fixes.
+- **Not armed, first fix after load** (geolocation mocked, popup opened before
+  the fix) — position arrived (`±12 m`, me-dot drawn) with the view untouched:
+  transform `translate3d(0px, 0px, 0px)`, zoom 8, popup unmoved.
+- **Regression** — an untouched load still gets the first-fix centre: zoom 13,
+  me-dot dead centre.

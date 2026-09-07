@@ -2,11 +2,18 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Dataset } from '../data'
 import type { LatLon, RadarLocation, Section } from '../domain/types'
-import { functionLabel, typeLabel, type Lang } from './i18n'
+import { functionLabel, t, typeLabel, type Lang } from './i18n'
+import { createViewportPolicy } from './viewport'
 
 export const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 const ATTRIB = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 const MNE_CENTER: L.LatLngTuple = [42.75, 19.25]
+const FIRST_FIX_ZOOM = 13
+
+const CROSSHAIR = `<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"
+  fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+  <circle cx="12" cy="12" r="6.2" /><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none" />
+  <path d="M12 2.2v3.1M12 18.7v3.1M2.2 12h3.1M18.7 12h3.1" /></svg>`
 
 function pinIcon(loc: RadarLocation): L.DivIcon {
   const built = loc.status === 'ZAVRSENO'
@@ -66,12 +73,67 @@ export function createMap(el: HTMLElement, data: Dataset, lang: Lang): MapView {
 
   let meMarker: L.Marker | null = null
   let meCircle: L.Circle | null = null
-  let follow = false
-  let centredOnce = false
+  let mePos: L.LatLngTuple | null = null
+
+  const policy = createViewportPolicy()
+
+  // Leaflet fires `zoomstart` for programmatic zooms as well as the driver's,
+  // and defers it into a requestAnimationFrame, so a synchronous flag around
+  // setView cannot tell the two apart. The first fix is the only zoom the app
+  // performs uninvited, so one consume-once token covers it.
+  let ownZoom = false
+
+  const centreBtn = L.DomUtil.create('button', 'centre-ctl') as HTMLButtonElement
+  centreBtn.type = 'button'
+  centreBtn.innerHTML = CROSSHAIR
+  L.DomEvent.disableClickPropagation(centreBtn)
+  L.DomEvent.on(centreBtn, 'click', () => {
+    policy.release()
+    if (mePos) map.panTo(mePos, { animate: true })
+    syncCentre()
+  })
+  // Added after the zoom control: Leaflet stacks bottom controls upwards, so
+  // this sits above it.
+  const centreControl = new L.Control({ position: 'bottomright' })
+  centreControl.onAdd = () => centreBtn
+  centreControl.addTo(map)
+
+  function syncCentre(): void {
+    const tracking = policy.tracking
+    centreBtn.setAttribute('aria-pressed', tracking ? 'true' : 'false')
+    centreBtn.classList.toggle('on', tracking)
+  }
+
+  function labelCentre(l: Lang): void {
+    const label = t('centreOnMe', l)
+    centreBtn.title = label
+    centreBtn.setAttribute('aria-label', label)
+  }
+
+  /** The driver took the wheel; nothing moves the map until they hand it back. */
+  function hold(): void {
+    policy.takeOver()
+    syncCentre()
+  }
+
+  map.on('dragstart', hold)
+  map.on('popupopen', hold)
+  // Leaflet's arrow-key pan goes through panBy, which fires no dragstart.
+  L.DomEvent.on(map.getContainer(), 'keydown', (e) => {
+    if ((e as KeyboardEvent).key.startsWith('Arrow')) hold()
+  })
+  map.on('zoomstart', () => {
+    if (ownZoom) { ownZoom = false; return }
+    hold()
+  })
+
+  labelCentre(lang)
+  syncCentre()
 
   return {
     setLang(l) {
       for (const { marker, loc } of markers) marker.setPopupContent(popupHtml(loc, l))
+      labelCentre(l)
     },
     showMe(p, accuracyM) {
       const ll: L.LatLngTuple = [p.lat, p.lon]
@@ -87,19 +149,28 @@ export function createMap(el: HTMLElement, data: Dataset, lang: Lang): MapView {
         meCircle?.setLatLng(ll)
         meCircle?.setRadius(accuracyM)
       }
-      if (!centredOnce) {
+      mePos = ll
+      const move = policy.onFix()
+      if (move === 'first-fix') {
         // The country view says nothing useful; the first fix is where the driver is.
-        centredOnce = true
-        map.setView(ll, 13, { animate: true })
-      } else if (follow) {
-        map.setView(ll, Math.max(map.getZoom(), 14), { animate: true })
+        ownZoom = map.getZoom() !== FIRST_FIX_ZOOM
+        map.setView(ll, FIRST_FIX_ZOOM, { animate: true })
+      } else if (move === 'follow') {
+        // Recentre only. Forcing a zoom floor overrode a driver who had zoomed
+        // out to see the whole route.
+        map.panTo(ll, { animate: true })
       }
+      syncCentre()
     },
     focus(p, zoom = 15) {
+      // Asking to look at a location is taking the wheel: a following map must
+      // not drag itself back off it a second later.
+      hold()
       map.setView([p.lat, p.lon], zoom, { animate: true })
     },
     followMe(on) {
-      follow = on
+      policy.setFollow(on)
+      syncCentre()
     },
     highlight(sectionId) {
       for (const [id, line] of sectionLines) {
