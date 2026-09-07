@@ -165,6 +165,17 @@ h2 {
   margin: .5rem 0 0; flex: 0 0 auto;
 }
 
+/* --- centre-on-me control ----------------------------------------------- */
+/* Lit only while the map is actually tracking, so the driver can tell at a
+   glance whether it will move on its own. */
+.centre-ctl {
+  width: 34px; height: 34px; padding: 0;
+  display: grid; place-items: center;
+  background: var(--panel); border: 1px solid var(--rule); color: var(--ink-dim);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, .4);
+}
+.centre-ctl.on { color: var(--cyan); border-color: var(--cyan); }
+
 /* --- markers ------------------------------------------------------------ */
 /* Leaflet's divIcon ships a white box and a border; we draw our own.
    Two classes deep because leaflet.css is imported after this file. */

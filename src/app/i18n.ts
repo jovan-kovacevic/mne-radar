@@ -42,6 +42,7 @@ export const UI: Dict = {
   locations: { me: 'lokacija', en: 'locations' },
   sections: { me: 'sekcija', en: 'sections' },
   noneNearby: { me: 'Nema lokacija u blizini', en: 'Nothing nearby' },
+  centreOnMe: { me: 'Centriraj na mene', en: 'Centre on me' },
   enforces: { me: 'Kontroliše', en: 'Enforces' },
   km: { me: 'km', en: 'km' },
   m: { me: 'm', en: 'm' },
