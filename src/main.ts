@@ -177,6 +177,7 @@ function onPosition(pos: GeolocationPosition): void {
 
 function handleFix(fix: Fix): void {
   lastFix = fix
+  hideLocTrouble()
   map.showMe(fix, fix.accuracyM)
   renderNearby(fix)
 
@@ -199,16 +200,38 @@ function handleFix(fix: Fix): void {
   setStatus(`${t('armed', lang())} · ${kmh} km/h · ±${Math.round(fix.accuracyM)} m`)
 }
 
+function showLocTrouble(helpKey: string): void {
+  $('locHelp').textContent = t(helpKey, lang())
+  $<HTMLButtonElement>('locRetry').textContent = t('locRetry', lang())
+  $('locTrouble').hidden = false
+}
+
+function hideLocTrouble(): void {
+  $('locTrouble').hidden = true
+}
+
 function onPositionError(err: GeolocationPositionError): void {
-  const msg = err.code === err.PERMISSION_DENIED
-    ? t('locationDenied', lang())
-    : t('locationUnavailable', lang())
-  setStatus(msg)
+  // Three different failures used to share one unreadable message. Each has a
+  // different fix, and the driver is the only one who can apply it.
+  if (err.code === err.PERMISSION_DENIED) {
+    setStatus(t('locationDenied', lang()))
+    showLocTrouble('locFixHelpDenied')
+  } else if (err.code === err.TIMEOUT) {
+    setStatus(t('locating', lang()))
+    showLocTrouble('locFixHelpTimeout')
+  } else {
+    setStatus(t('locationUnavailable', lang()))
+    showLocTrouble('locFixHelpUnavailable')
+  }
 }
 
 function startWatching(): void {
   if (!('geolocation' in navigator)) { setStatus(t('locationUnavailable', lang())); return }
-  if (!window.isSecureContext) { setStatus(t('insecure', lang())); return }
+  if (!window.isSecureContext) {
+    setStatus(t('insecure', lang()))
+    showLocTrouble('locFixHelpInsecure')
+    return
+  }
   if (watchId !== null) return
   setStatus(t('locating', lang()))
   watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, {
@@ -259,6 +282,12 @@ function requestDrive(): void {
     return
   }
   arm()
+}
+
+$('locRetry').onclick = () => {
+  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null }
+  hideLocTrouble()
+  startWatching()
 }
 
 $('armBtn').onclick = requestDrive

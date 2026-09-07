@@ -118,6 +118,16 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   font-family: var(--mono); font-size: .7rem; color: var(--ink-faint);
   text-align: right; flex: 0 0 auto; max-width: 40%;
 }
+.loc-trouble {
+  margin-top: .7rem; padding: .6rem .7rem;
+  border: 1px solid var(--amber); border-left-width: 3px;
+  background: rgba(240, 166, 60, .07);
+  display: flex; gap: .7rem; align-items: center; flex-wrap: wrap;
+}
+.loc-trouble[hidden] { display: none; }
+.loc-trouble p { margin: 0; flex: 1 1 12rem; font-size: .8rem; line-height: 1.45; color: var(--ink); }
+.loc-trouble button { flex: 0 0 auto; font-size: .78rem; padding: .4rem .6rem; }
+
 h2 {
   font-family: var(--display); text-transform: uppercase; letter-spacing: .1em;
   font-size: .74rem; color: var(--ink-dim); margin: .9rem 0 .35rem; font-weight: 600;
