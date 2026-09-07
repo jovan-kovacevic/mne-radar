@@ -168,11 +168,15 @@ h2 {
 /* --- centre-on-me control ----------------------------------------------- */
 /* Lit only while the map is actually tracking, so the driver can tell at a
    glance whether it will move on its own. */
-.centre-ctl {
+/* Two classes deep for the same reason as the markers below: leaflet.css is
+   imported after this file, and its `.leaflet-control { cursor: auto }` lands on
+   this very element. Leaflet's own zoom buttons escape it by being anchors. */
+.leaflet-control.centre-ctl {
   width: 34px; height: 34px; padding: 0;
   display: grid; place-items: center;
   background: var(--panel); border: 1px solid var(--rule); color: var(--ink-dim);
   box-shadow: 0 1px 5px rgba(0, 0, 0, .4);
+  cursor: pointer;
 }
 .centre-ctl.on { color: var(--cyan); border-color: var(--cyan); }
 
