@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { createAlertEngine } from '../src/domain/alerts'
 import { buildSections } from '../src/domain/sections'
 import { haversineMeters } from '../src/domain/geo'
-import { DEFAULT_SETTINGS, type AlertTarget, type Fix, type Settings } from '../src/domain/types'
-import { LOC_001, LOC_016, LOC_017, approachFrom, drive } from './helpers'
+import { DEFAULT_SETTINGS, type AlertTarget, type Fix, type LatLon, type Settings } from '../src/domain/types'
+import { LOC_001, LOC_016, LOC_017, approachFrom, crawl, drive, offsetMeters, radarAt } from './helpers'
 
 const settings = (o: Partial<Settings> = {}) => () => ({ ...DEFAULT_SETTINGS, ...o })
 
@@ -158,5 +158,67 @@ describe('planned locations', () => {
     // 016 is built, so the corridor still alerts even with planned excluded.
     const { fired } = run(target, drive(before, LOC_016, { stepM: 40 }), settings({ includePlanned: false }))
     expect(fired.length).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * The drive reported on 2026-09-07 in central Podgorica: town speed, a grid of
+ * streets, and a radar on one of them the driver was never going to take.
+ */
+describe('a town street grid', () => {
+  const TOWN_MPS = 25 / 3.6
+  const START: LatLon = { lat: 42.4400, lon: 19.2500 }
+  /** 1.6 km straight east — the street actually being driven. */
+  const ALONG_STREET = offsetMeters(START, 1600, 0)
+  /** 440 m away, but a block north: the reported false alert. */
+  const PARALLEL = radarAt('P1', offsetMeters(START, 426, 110))
+  /** 440 m away on the street being driven. */
+  const ON_ROUTE = radarAt('R1', offsetMeters(START, 440, 0))
+
+  const townDrive = (from = START) => drive(from, ALONG_STREET, { stepM: 20, speedMps: TOWN_MPS })
+
+  it('places the two radars the same distance away, so only the street differs', () => {
+    expect(haversineMeters(START, PARALLEL)).toBeGreaterThan(430)
+    expect(haversineMeters(START, PARALLEL)).toBeLessThan(450)
+    expect(haversineMeters(START, ON_ROUTE)).toBeCloseTo(440, -1)
+  })
+
+  it('does not warn about a radar a block over on a parallel street', () => {
+    const target: AlertTarget[] = [{ kind: 'point', id: PARALLEL.id, location: PARALLEL }]
+    expect(run(target, townDrive()).fired).toHaveLength(0)
+  })
+
+  it('still warns about a radar on the street being driven', () => {
+    const target: AlertTarget[] = [{ kind: 'point', id: ON_ROUTE.id, location: ON_ROUTE }]
+    const { fired, outputs } = run(target, townDrive())
+    expect(fired).toEqual([ON_ROUTE.id])
+    // In town the warning arrives on time, not 440 m and half a minute early.
+    const first = outputs.find((o) => o.active.length > 0)!
+    expect(first.active[0]!.distanceM).toBeLessThan(200)
+    expect(first.active[0]!.distanceM / TOWN_MPS).toBeGreaterThan(10)
+  })
+
+  it('stays silent about point radars while crawling with no heading at all', () => {
+    // iOS reports no heading and no speed below walking pace; the old fail-safe
+    // then treated the whole 500 m circle as ahead.
+    const behind = radarAt('B1', offsetMeters(START, -300, 320))
+    const targets: AlertTarget[] = [
+      { kind: 'point', id: PARALLEL.id, location: PARALLEL },
+      { kind: 'point', id: behind.id, location: behind },
+    ]
+    expect(run(targets, crawl(START, ALONG_STREET, 40)).fired).toHaveLength(0)
+  })
+
+  it('warns a motorway driver at 90 km/h with the full radius to act on', () => {
+    const MOTORWAY_MPS = 90 / 3.6
+    const far = radarAt('M1', offsetMeters(START, 3000, 0))
+    const target: AlertTarget[] = [{ kind: 'point', id: far.id, location: far }]
+    const fixes = drive(START, far, { stepM: 25, speedMps: MOTORWAY_MPS })
+    const { outputs } = run(target, fixes)
+    const i = outputs.findIndex((o) => o.active.length > 0)
+    expect(i).toBeGreaterThanOrEqual(0)
+    const d = haversineMeters(fixes[i]!, far)
+    expect(d).toBeGreaterThan(DEFAULT_SETTINGS.radiusM - 60)
+    expect(d / MOTORWAY_MPS).toBeGreaterThan(15)
   })
 })

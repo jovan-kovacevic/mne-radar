@@ -52,3 +52,33 @@ export function approachFrom(origin: LatLon, target: LatLon, metres: number): La
   const f = (d - metres) / d
   return { lat: origin.lat + (target.lat - origin.lat) * f, lon: origin.lon + (target.lon - origin.lon) * f }
 }
+
+/** Move a point `eastM` east and `northM` north. Flat-earth, exact enough over a block. */
+export function offsetMeters(from: LatLon, eastM: number, northM: number): LatLon {
+  const dLat = northM / 111_132
+  const dLon = eastM / (111_320 * Math.cos((from.lat * Math.PI) / 180))
+  return { lat: from.lat + dLat, lon: from.lon + dLon }
+}
+
+/** A point radar at an arbitrary place, for geometry the real dataset does not happen to hold. */
+export function radarAt(id: string, at: LatLon): RadarLocation {
+  return { ...LOC_001, id, lat: at.lat, lon: at.lon }
+}
+
+/** Crawling in traffic: steps too short to derive a heading, and iOS reporting neither. */
+export function crawl(from: LatLon, to: LatLon, fixes: number, stepM = 3): Fix[] {
+  const d = haversineMeters(from, to)
+  const out: Fix[] = []
+  for (let i = 0; i < fixes; i++) {
+    const f = (i * stepM) / d
+    out.push({
+      lat: from.lat + (to.lat - from.lat) * f,
+      lon: from.lon + (to.lon - from.lon) * f,
+      headingDeg: null,
+      speedMps: null,
+      accuracyM: 10,
+      t: 1_700_000_000_000 + i * 1000,
+    })
+  }
+  return out
+}

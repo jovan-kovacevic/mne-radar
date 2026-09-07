@@ -1,12 +1,31 @@
-import { bearingDegrees, bearingDelta, haversineMeters, isAhead } from './geo'
+import { alongAndCrossTrack, bearingDegrees, bearingDelta, haversineMeters, isAhead } from './geo'
 import type { ActiveAlert, AlertTarget, EngineOutput, Fix, LatLon, Settings } from './types'
 
 /** A fix worse than this tells us where we are but not accurately enough to warn on. */
 export const MAX_ACCURACY_M = 100
 /** Below this we are parked, walking, or stuck at a light — no new warnings. */
 export const MIN_SPEED_MPS = 20 / 3.6
-/** Half-angle of the cone counted as "ahead". */
+/** Half-angle of the cone counted as "ahead". Sections only — points use the corridor. */
 export const AHEAD_HALF_ANGLE = 60
+/**
+ * How much warning is worth giving, in seconds. The distance follows from the speed,
+ * so one number is right in town and on the open road: 111 m at 20 km/h, 278 m at
+ * 50 km/h, 500 m at 90 km/h. That last figure is the default radius, which is why
+ * this leaves motorway warnings exactly where they were and only shortens them in
+ * town, where 500 m of notice was half a minute of red banner about a junction the
+ * driver had not reached.
+ */
+export const WARNING_SECONDS = 20
+/**
+ * How far off the line of travel a point radar may sit and still be worth warning
+ * about. A radar one street over is only a few degrees off the bearing but a block
+ * away across it, and the cone could not tell those apart: 500 m of it is 26
+ * hectares of central Podgorica, or the full 78 when the heading is unknown.
+ *
+ * Widened by the fix's own accuracy, because a position known to +/-10 m cannot
+ * resolve a 40 m corridor any finer than that.
+ */
+export const CORRIDOR_HALF_WIDTH_M = 40
 /** Close enough to an endpoint to count as having reached it. */
 export const ENTER_RADIUS_M = 75
 /** Consecutive fixes of growing distance before we call a target passed. */
@@ -68,6 +87,10 @@ export function createAlertEngine(targets: AlertTarget[], getSettings: () => Set
     // A null speed is unknown, not zero — unknown must not silence the app.
     const movingEnough = fix.speedMps === null || fix.speedMps >= MIN_SPEED_MPS
     const radius = settings.radiusM
+    // An unknown speed falls back to the setting rather than to no warning at all.
+    const leadM =
+      fix.speedMps === null ? radius : Math.min(radius, fix.speedMps * WARNING_SECONDS)
+    const corridorM = CORRIDOR_HALF_WIDTH_M + fix.accuracyM
 
     for (const target of targets) {
       const st = stateOf(target.id)
@@ -83,9 +106,15 @@ export function createAlertEngine(targets: AlertTarget[], getSettings: () => Set
         }
 
         if (st.phase === 'IDLE') {
-          if (d <= radius && movingEnough && isAhead(heading, fix, loc, AHEAD_HALF_ANGLE)) {
-            st.phase = 'APPROACHING'
-            fired.push(target.id)
+          // No heading, no point warning. Without a line of travel there is no
+          // corridor to test, and warning about the whole circle instead is the
+          // town noise itself, not a fail-safe.
+          if (movingEnough && heading !== null) {
+            const { alongM, crossM } = alongAndCrossTrack(heading, fix, loc)
+            if (alongM > 0 && alongM <= leadM && crossM <= corridorM) {
+              st.phase = 'APPROACHING'
+              fired.push(target.id)
+            }
           }
         } else if (st.phase === 'APPROACHING') {
           const receding = st.lastDistance !== null && d > st.lastDistance
@@ -128,8 +157,11 @@ export function createAlertEngine(targets: AlertTarget[], getSettings: () => Set
       if (st.phase === 'IDLE') {
         const aheadA = isAhead(heading, fix, sec.start, AHEAD_HALF_ANGLE)
         const aheadB = isAhead(heading, fix, sec.end, AHEAD_HALF_ANGLE)
-        const approachA = dA <= radius && aheadA
-        const approachB = dB <= radius && aheadB
+        // A section keeps the cone and its no-heading fail-safe: missing the entry
+        // gantry costs the driver the whole measured corridor, and these sit on open
+        // road where there is no parallel street to confuse them with.
+        const approachA = dA <= leadM && aheadA
+        const approachB = dB <= leadM && aheadB
         if (movingEnough && (approachA || approachB)) {
           st.phase = 'APPROACHING'
           st.entryRole = approachA && (!approachB || dA <= dB) ? 'A' : 'B'
