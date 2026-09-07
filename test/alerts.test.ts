@@ -3,7 +3,7 @@ import { createAlertEngine } from '../src/domain/alerts'
 import { buildSections } from '../src/domain/sections'
 import { haversineMeters } from '../src/domain/geo'
 import { DEFAULT_SETTINGS, type AlertTarget, type Fix, type LatLon, type Settings } from '../src/domain/types'
-import { LOC_001, LOC_016, LOC_017, approachFrom, crawl, drive, offsetMeters, radarAt } from './helpers'
+import { LOC_001, LOC_016, LOC_017, approachFrom, arc, crawl, drive, drivePath, offsetMeters, radarAt } from './helpers'
 
 const settings = (o: Partial<Settings> = {}) => () => ({ ...DEFAULT_SETTINGS, ...o })
 
@@ -198,6 +198,14 @@ describe('a town street grid', () => {
     expect(first.active[0]!.distanceM / TOWN_MPS).toBeGreaterThan(10)
   })
 
+  it('does not warn about that parallel street on a poor fix either', () => {
+    // A position known only to +/-95 m is a reason to trust the corridor less, not a
+    // reason to widen it: widening put the reported false alert straight back.
+    const target: AlertTarget[] = [{ kind: 'point', id: PARALLEL.id, location: PARALLEL }]
+    const fixes = townDrive().map((f) => ({ ...f, accuracyM: 95 }))
+    expect(run(target, fixes).fired).toHaveLength(0)
+  })
+
   it('stays silent about point radars while crawling with no heading at all', () => {
     // iOS reports no heading and no speed below walking pace; the old fail-safe
     // then treated the whole 500 m circle as ahead.
@@ -220,5 +228,168 @@ describe('a town street grid', () => {
     const d = haversineMeters(fixes[i]!, far)
     expect(d).toBeGreaterThan(DEFAULT_SETTINGS.radiusM - 60)
     expect(d / MOTORWAY_MPS).toBeGreaterThan(15)
+  })
+})
+
+/**
+ * The corridor is the whole fix, so its edges are pinned here. Widening or narrowing
+ * it silently would put back either the false alerts or the missed ones.
+ */
+describe('the corridor a point radar has to sit in', () => {
+  const MOTORWAY_MPS = 90 / 3.6
+  const START: LatLon = { lat: 42.4400, lon: 19.2500 }
+  const AHEAD = offsetMeters(START, 3000, 0)
+
+  const firstAlert = (across: number) => {
+    const loc = radarAt('X', offsetMeters(START, 400, across))
+    const fixes = drive(START, AHEAD, { stepM: 10, speedMps: MOTORWAY_MPS })
+    const { outputs } = run([{ kind: 'point', id: loc.id, location: loc }], fixes)
+    const i = outputs.findIndex((o) => o.active.length > 0)
+    return i < 0 ? null : haversineMeters(fixes[i]!, loc)
+  }
+
+  it('warns about a radar well inside it', () => {
+    expect(firstAlert(0)).toBeGreaterThan(390)
+  })
+
+  it('warns about a radar offset by less than the corridor opens to at that range', () => {
+    // 400 m down the road the corridor is 40 + 40 = 80 m wide either side.
+    expect(firstAlert(70)).not.toBeNull()
+  })
+
+  it('stays silent about a radar wider than that until the driver is nearer', () => {
+    const d = firstAlert(120)
+    expect(d === null || d < 300).toBe(true)
+  })
+
+  it('never warns about the next street over, at any point of the drive', () => {
+    // Two blocks: far enough across that the corridor never reaches it.
+    const loc = radarAt('Y', offsetMeters(START, 400, 220))
+    const fixes = drive(START, AHEAD, { stepM: 10, speedMps: MOTORWAY_MPS })
+    expect(run([{ kind: 'point', id: loc.id, location: loc }], fixes).fired).toHaveLength(0)
+  })
+})
+
+describe('roads that are not straight lines', () => {
+  const MOTORWAY_MPS = 90 / 3.6
+  const START: LatLon = { lat: 42.3800, lon: 19.1000 }
+
+  it('still gives a motorway driver time to act on a 1 km bend', () => {
+    const path = arc(START, 90, 1000, 600, 25)
+    const loc = radarAt('C1', path[path.length - 1]!)
+    const fixes = drivePath(path, { speedMps: MOTORWAY_MPS })
+    const { outputs } = run([{ kind: 'point', id: loc.id, location: loc }], fixes)
+    const i = outputs.findIndex((o) => o.active.length > 0)
+    expect(i).toBeGreaterThanOrEqual(0)
+    const d = haversineMeters(fixes[i]!, loc)
+    // A constant-width corridor held this back to about 200 m — under 8 s at 90 km/h.
+    expect(d).toBeGreaterThan(330)
+    expect(d / MOTORWAY_MPS).toBeGreaterThan(13)
+  })
+})
+
+describe('what the engine does without a heading', () => {
+  const START: LatLon = { lat: 42.4400, lon: 19.2500 }
+
+  it('raises no point warning at all on the first fix of a drive', () => {
+    // Nothing has been travelled yet, so there is no line of travel to test against.
+    const loc = radarAt('N1', offsetMeters(START, 0, 300))
+    const fix: Fix = { ...START, headingDeg: null, speedMps: null, accuracyM: 10, t: 1_700_000_000_000 }
+    const { fired } = run([{ kind: 'point', id: loc.id, location: loc }], [fix])
+    expect(fired).toHaveLength(0)
+  })
+
+  it('warns about the same radar the moment a heading is known', () => {
+    const loc = radarAt('N1', offsetMeters(START, 0, 300))
+    const fix: Fix = { ...START, headingDeg: 0, speedMps: null, accuracyM: 10, t: 1_700_000_000_000 }
+    const { fired } = run([{ kind: 'point', id: loc.id, location: loc }], [fix])
+    expect(fired).toEqual(['N1'])
+  })
+
+  it('takes a heading from the drive itself when the device never reports one', () => {
+    // Half-second fixes at 28 km/h are 4 m apart: a heading read off consecutive
+    // fixes would be GPS noise, and reading it off none at all was silence.
+    const loc = radarAt('N2', offsetMeters(START, 400, 0))
+    const path = arc(START, 90, 1e7, 400, 4)
+    const fixes = drivePath(path, { speedMps: 8, heading: null, everyMs: 500 })
+    expect(run([{ kind: 'point', id: loc.id, location: loc }], fixes).fired).toEqual(['N2'])
+  })
+})
+
+describe('traffic that stops and starts', () => {
+  const START: LatLon = { lat: 42.4400, lon: 19.2500 }
+
+  it('warns a driver who slows to a crawl before reaching the warning distance', () => {
+    // 25 km/h to 250 m out, then queued at 10 km/h to the stop line. The junction
+    // being queued at is the one with the camera on it.
+    const loc = radarAt('Q1', offsetMeters(START, 500, 0))
+    const path = arc(START, 90, 1e7, 480, 10)
+    const fixes = drivePath(path, { speedMps: 25 / 3.6, everyMs: 1440 }).map((f, i) =>
+      i * 10 < 250 ? f : { ...f, speedMps: 10 / 3.6 },
+    )
+    expect(run([{ kind: 'point', id: loc.id, location: loc }], fixes).fired).toEqual(['Q1'])
+  })
+
+  it('still says nothing to a driver who has been stopped for a minute', () => {
+    const loc = radarAt('Q2', offsetMeters(START, 300, 0))
+    const path = arc(START, 90, 1e7, 200, 10)
+    const moving = drivePath(path, { speedMps: 25 / 3.6, everyMs: 1440 })
+    const parked: Fix[] = Array.from({ length: 60 }, (_, i) => ({
+      ...moving[moving.length - 1]!,
+      speedMps: 0,
+      t: moving[moving.length - 1]!.t + (i + 1) * 1000,
+    }))
+    const { fired } = run([{ kind: 'point', id: loc.id, location: loc }], [...moving, ...parked])
+    // It fires once on the approach and never again while sitting there.
+    expect(fired).toEqual(['Q2'])
+  })
+})
+
+describe('how far ahead the warning arrives', () => {
+  const START: LatLon = { lat: 42.4400, lon: 19.2500 }
+  const AHEAD = offsetMeters(START, 3000, 0)
+
+  const leadAt = (mps: number) => {
+    const loc = radarAt('L', offsetMeters(START, 900, 0))
+    const fixes = drive(START, AHEAD, { stepM: 10, speedMps: mps })
+    const { outputs } = run([{ kind: 'point', id: loc.id, location: loc }], fixes)
+    const i = outputs.findIndex((o) => o.active.length > 0)
+    return haversineMeters(fixes[i]!, loc)
+  }
+
+  it('is twenty seconds of driving at 50 km/h', () => {
+    const d = leadAt(50 / 3.6)
+    expect(d).toBeGreaterThan(265)
+    expect(d).toBeLessThan(290)
+  })
+
+  it('stops shortening below the floor in slow traffic', () => {
+    expect(leadAt(22 / 3.6)).toBeGreaterThan(190)
+    expect(leadAt(22 / 3.6)).toBeLessThan(215)
+  })
+
+  it('is capped by the radius the driver chose', () => {
+    expect(leadAt(120 / 3.6)).toBeLessThanOrEqual(DEFAULT_SETTINGS.radiusM)
+  })
+})
+
+describe('what sections keep that points gave up', () => {
+  const before = approachFrom({ lat: 42.3760, lon: 19.1300 }, LOC_016, 1200)
+
+  it('warns on the entry gantry with no heading at all, where a point would stay silent', () => {
+    // Missing a section entry costs the driver the whole measured corridor, so the
+    // fail-safe stays here even though it was the town noise for point radars.
+    const at = approachFrom({ lat: 42.3760, lon: 19.1300 }, LOC_016, 300)
+    const fix: Fix = { ...at, headingDeg: null, speedMps: null, accuracyM: 10, t: 1_700_000_000_000 }
+    expect(run(SECTION_TARGET, [fix]).fired).toHaveLength(1)
+  })
+
+  it('holds the same time-based lead as a point radar does', () => {
+    const fixes = drive(before, LOC_016, { stepM: 10, speedMps: 25 / 3.6 })
+    const { outputs } = run(SECTION_TARGET, fixes)
+    const i = outputs.findIndex((o) => o.active.length > 0)
+    const d = haversineMeters(fixes[i]!, LOC_016)
+    expect(d).toBeGreaterThan(180)
+    expect(d).toBeLessThan(215)
   })
 })

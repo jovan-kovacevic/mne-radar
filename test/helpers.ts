@@ -1,6 +1,7 @@
 import { bearingDegrees, haversineMeters } from '../src/domain/geo'
 import type { Fix, LatLon, RadarLocation } from '../src/domain/types'
 
+
 export const LOC_016: RadarLocation = {
   id: '016', name: 'M-10, dionica Podgorica - Cetinje', city: 'PODGORICA',
   lat: 42.38311111, lon: 19.10158333,
@@ -81,4 +82,49 @@ export function crawl(from: LatLon, to: LatLon, fixes: number, stepM = 3): Fix[]
     })
   }
   return out
+}
+
+/**
+ * Points every `stepM` along a constant-radius left-hand bend, starting at `from`
+ * on `headingDeg`. A real road is not a ray, and the alert engine has to cope.
+ */
+export function arc(
+  from: LatLon,
+  headingDeg: number,
+  curveRadiusM: number,
+  lengthM: number,
+  stepM: number,
+): LatLon[] {
+  const h = (headingDeg * Math.PI) / 180
+  const out: LatLon[] = []
+  for (let s = 0; s <= lengthM + 1e-9; s += stepM) {
+    const turned = s / curveRadiusM
+    // Local frame: x forward along the initial heading, y to its left.
+    const x = curveRadiusM * Math.sin(turned)
+    const y = curveRadiusM * (1 - Math.cos(turned))
+    out.push(offsetMeters(from, x * Math.sin(h) - y * Math.cos(h), x * Math.cos(h) + y * Math.sin(h)))
+  }
+  return out
+}
+
+/** Fixes along an arbitrary path, with the course over ground a device would report. */
+export function drivePath(
+  points: LatLon[],
+  opts: { speedMps?: number | null; accuracyM?: number; heading?: 'real' | null; everyMs?: number } = {},
+): Fix[] {
+  const speed = opts.speedMps === undefined ? 25 : opts.speedMps
+  const acc = opts.accuracyM ?? 8
+  const everyMs = opts.everyMs ?? 2000
+  return points.map((p, i) => {
+    const a = points[Math.max(0, i - 1)]!
+    const b = points[Math.max(0, i - 1) + 1] ?? p
+    return {
+      lat: p.lat,
+      lon: p.lon,
+      headingDeg: opts.heading === null ? null : bearingDegrees(a, b),
+      speedMps: speed,
+      accuracyM: acc,
+      t: 1_700_000_000_000 + i * everyMs,
+    }
+  })
 }
