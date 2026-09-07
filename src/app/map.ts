@@ -4,19 +4,8 @@ import type { Dataset } from '../data'
 import type { LatLon, RadarLocation, Section } from '../domain/types'
 import { functionLabel, typeLabel, type Lang } from './i18n'
 
-// The OSM Foundation tile servers exclude production apps and CARTO now stamps
-// "API KEY REQUIRED" over its keyless tiles, so the default is Esri's dark
-// canvas: keyless today, and dark enough to match the app. Treat it as a
-// stopgap — a keyed provider is the durable answer. Set VITE_TILE_URL,
-// VITE_TILE_ATTRIB and VITE_TILE_MAX_NATIVE_ZOOM to switch without touching
-// code; the service worker derives its cache rule from the same VITE_TILE_URL.
-export const TILE_URL: string = import.meta.env.VITE_TILE_URL
-  ?? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
-const ATTRIB: string = import.meta.env.VITE_TILE_ATTRIB
-  ?? 'Tiles &copy; <a href="https://www.esri.com">Esri</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-// Esri's dark canvas has no tiles past z16 — it answers with a blank
-// placeholder rather than a 404, so Leaflet must be told to upscale instead.
-const MAX_NATIVE_ZOOM = Number(import.meta.env.VITE_TILE_MAX_NATIVE_ZOOM ?? 16)
+export const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+const ATTRIB = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 const MNE_CENTER: L.LatLngTuple = [42.75, 19.25]
 
 function pinIcon(loc: RadarLocation): L.DivIcon {
@@ -56,7 +45,7 @@ export interface MapView {
 export function createMap(el: HTMLElement, data: Dataset, lang: Lang): MapView {
   const map = L.map(el, { zoomControl: false, attributionControl: true }).setView(MNE_CENTER, 8)
   L.control.zoom({ position: 'bottomright' }).addTo(map)
-  L.tileLayer(TILE_URL, { maxZoom: 19, maxNativeZoom: MAX_NATIVE_ZOOM, attribution: ATTRIB }).addTo(map)
+  L.tileLayer(TILE_URL, { maxZoom: 19, attribution: ATTRIB }).addTo(map)
 
   const sectionLines = new Map<string, L.Polyline>()
   for (const s of data.sections) {
