@@ -8,6 +8,7 @@ import { createMap, sectionMidpoint } from './app/map'
 import { createChime } from './app/sound'
 import { loadSettings, saveSettings } from './app/settings'
 import { formatDistance, shortName } from './app/format'
+import { atBottom, atTop, createNearbyList, type NearbyRow } from './app/nearby'
 import { functionLabel, t, typeLabel, type Lang } from './app/i18n'
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -28,6 +29,7 @@ let engine = createAlertEngine(targets, () => settings)
 const chime = createChime(() => settings.soundOn)
 const map = createMap($('map'), data, settings.language)
 
+const nearby = createNearbyList()
 let armed = false
 let lastFix: Fix | null = null
 let watchId: number | null = null
@@ -117,44 +119,65 @@ function renderBanner(active: ActiveAlert[]): void {
 /** Podgorica, used only to have something on screen before the first fix. */
 const FALLBACK_ORIGIN: LatLon = { lat: 42.44, lon: 19.26 }
 
+/**
+ * The list is rebuilt on every fix, so it never destroys what it can update.
+ * Reusing the rows that are already there keeps the distances live without
+ * touching the scroll offset — a rebuild mid-scroll is BUG-001 in a smaller box.
+ */
+function nearbyRowEl(r: NearbyRow): HTMLLIElement {
+  const li = document.createElement('li')
+  li.dataset.id = r.id
+  const built = r.location.status === 'ZAVRSENO'
+  const meta = r.section
+    ? `${t('sectionAhead', lang())} · ${formatDistance(r.section.lengthM, lang())}`
+    : typeLabel(r.location.type, lang())
+  li.innerHTML =
+    `<span class="d">${formatDistance(r.distanceM, lang())}</span>` +
+    `<span class="txt"><span class="n">${shortName(r.location.name)}</span>` +
+    `<span class="meta"><span class="dot ${built ? 'built' : 'planned'}"></span>${r.location.city} · ${meta}</span></span>`
+  li.onclick = () => map.focus(r.section ? sectionMidpoint(r.section) : r.location, r.section ? 13 : 15)
+  return li
+}
+
+/** The language the rows on screen were written in; a switch forces a rebuild. */
+let renderedLang: Lang | null = null
+
 function renderNearby(fix: LatLon, fromRealFix = true): void {
-  const list = $('nearby')
+  const list = $<HTMLUListElement>('nearby')
   $('nearbyTitle').innerHTML = fromRealFix
     ? t('nearby', lang())
     : `${t('nearby', lang())} <span class="refpoint">· Podgorica</span>`
-  const rows = targets
-    .map((target) => {
-      if (target.kind === 'point') {
-        const d = haversineMeters(fix, target.location)
-        return { d, loc: target.location, section: null }
-      }
-      const s = target.section
-      const d = Math.min(haversineMeters(fix, s.start), haversineMeters(fix, s.end))
-      return { d, loc: s.start, section: s }
-    })
-    .sort((a, b) => a.d - b.d)
-    .slice(0, 12)
+  const rows = nearby.rows(fix, targets, fromRealFix)
 
-  list.innerHTML = ''
   if (!rows.length) {
     const li = document.createElement('li')
     li.textContent = t('noneNearby', lang())
-    list.appendChild(li)
+    list.replaceChildren(li)
+    renderedLang = lang()
     return
   }
-  for (const r of rows) {
-    const li = document.createElement('li')
-    const built = r.loc.status === 'ZAVRSENO'
-    const meta = r.section
-      ? `${t('sectionAhead', lang())} · ${formatDistance(r.section.lengthM, lang())}`
-      : typeLabel(r.loc.type, lang())
-    li.innerHTML =
-      `<span class="d">${formatDistance(r.d, lang())}</span>` +
-      `<span class="txt"><span class="n">${shortName(r.loc.name)}</span>` +
-      `<span class="meta"><span class="dot ${built ? 'built' : 'planned'}"></span>${r.loc.city} · ${meta}</span></span>`
-    li.onclick = () => map.focus(r.section ? sectionMidpoint(r.section) : r.loc, r.section ? 13 : 15)
-    list.appendChild(li)
+
+  const existing = Array.from(list.children) as HTMLLIElement[]
+  const extendable =
+    renderedLang === lang() &&
+    existing.length <= rows.length &&
+    existing.every((li, i) => li.dataset.id === rows[i]!.id)
+
+  if (extendable) {
+    // Same rows in the same order: only the distances have moved.
+    existing.forEach((li, i) => {
+      const d = li.querySelector('.d')
+      if (d) d.textContent = formatDistance(rows[i]!.distanceM, lang())
+    })
+    for (const r of rows.slice(existing.length)) list.appendChild(nearbyRowEl(r))
+    return
   }
+
+  // A real rebuild — hold the scroll offset so the reader keeps their place.
+  const offset = list.scrollTop
+  list.replaceChildren(...rows.map(nearbyRowEl))
+  list.scrollTop = offset
+  renderedLang = lang()
 }
 
 function setStatus(msg: string): void {
@@ -291,6 +314,28 @@ $('locRetry').onclick = () => {
 }
 
 $('armBtn').onclick = requestDrive
+
+// More of the country appears only because the user asked for it with a scroll —
+// never because a fix arrived. Reaching the top hands the ordering back to distance.
+const nearbyList = $<HTMLUListElement>('nearby')
+nearbyList.addEventListener(
+  'scroll',
+  () => {
+    if (atTop(nearbyList)) {
+      nearby.backToTop()
+      return
+    }
+    if (!atBottom(nearbyList)) return
+    // Render when the freeze arms, not only when rows were revealed. On a fully
+    // revealed list there is nothing left to reveal, and without this render the
+    // order would be captured by the next fix instead — at a position the reader
+    // has not seen, letting exactly one shuffle through under their finger.
+    const wasLive = nearby.ordering === 'live'
+    const revealed = nearby.revealMore(targets.length)
+    if (revealed || wasLive) renderNearby(lastFix ?? FALLBACK_ORIGIN, lastFix !== null)
+  },
+  { passive: true },
+)
 $('gateAccept').onclick = () => {
   sessionStorage.setItem('gate-seen', '1')
   settings = { ...settings, alertsEnabled: true }
